@@ -12,8 +12,17 @@ import argparse
 
 
 def read_tidal_data(filename):
-
-    return
+    """Code to read a file, text date/time into real datetimes, make sea level into number"""
+    data = pd.read_csv(
+        filename,
+        skiprows = 11,
+        delim_whitespace = True,
+        header = None,
+        engine = "python")
+    
+    
+   
+    return 
     
 def extract_single_year_remove_mean(year, data):
 
