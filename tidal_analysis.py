@@ -16,17 +16,33 @@ def read_tidal_data(filename):
     data = pd.read_csv(
         filename,
         skiprows = 11,
-        delim_whitespace = True,
+        sep = r'\s+',
         header = None,
         engine = "python")
     
+    data.columns = ["Cycle", "Date", "Time", "Sea Level", "Residual"]
+    data["Sea Level"] = data["Sea Level"].replace({"M": np.nan, "N": np.nan, "T": np.nan})
+    data["Residual"] = data["Residual"].replace({"M": np.nan, "N": np.nan, "T": np.nan})
+
+    data["datetime"] = pd.to_datetime(data["Date"] + " " + data["Time"], errors="coerce")
+
+    data["Sea Level"] = pd.to_numeric(data["Sea Level"], errors="coerce")
+    data["Residual"] = pd.to_numeric(data["Residual"], errors="coerce")
+
+    data = data[["datetime", "Sea Level", "Residual"]].copy()
+    data = data.dropna(subset=["datetime"])
+    data = data.set_index("datetime")
+    return data
     
-   
-    return 
     
 def extract_single_year_remove_mean(year, data):
+    """Returning one year of data with mean seal level removed"""
+    year_data = data[data.index.year == int(year)].copy()
 
-    return 
+    year_data["Sea Level"] = year_data["Sea Level"] - year_data["Sea Level"].mean()
+    return year_data
+
+
 
 
 def extract_section_remove_mean(start, end, data):
