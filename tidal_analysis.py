@@ -36,18 +36,18 @@ def read_tidal_data(filename):
     
     
 def extract_single_year_remove_mean(year, data):
-    """Returning one year of data with mean seal level removed"""
+    """Returning one year of data with mean sea level removed"""
     year_data = data[data.index.year == int(year)].copy()
-
     year_data["Sea Level"] = year_data["Sea Level"] - year_data["Sea Level"].mean()
     return year_data
 
 
-
-
 def extract_section_remove_mean(start, end, data):
-
-    return year_data
+    start = pd.to_datetime(start)
+    end = pd.to_datetime(end)
+    section = data.loc[start:end].copy()
+    section["Sea Level"] = section["Sea Level"] - section["Sea Level"].mean()
+    return section
 
 
 def join_data(data1, data2):
