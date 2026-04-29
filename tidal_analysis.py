@@ -51,13 +51,22 @@ def extract_section_remove_mean(start, end, data):
 
 
 def join_data(data1, data2):
+    """joining two yearly tidal dateframes and return them in chronological order"""
+    joined = pd.concat([data2, data1])
+    joined = joined.sort_index()
 
-    return 
+    return joined
 
 def sea_level_rise(data):
+    """estimating rate of sea level rise per year form the full time series"""
+    clean =data.dropna(subset =["Sea Level"]).copy()
+    x = data.index.map(pd.Timestamp.toordinal).to_numpy()
+    y = data["Sea Level"].to_numpy()
+    
+    m, c, r, p, se =stats.linregress(x, y)
 
-    return
-
+    return m * 365.25
+ 
 def tidal_analysis(data, constituents, start_datetime):
 
     return
