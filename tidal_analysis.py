@@ -16,28 +16,35 @@ def read_tidal_data(filename):
     data = pd.read_csv(
         filename,
         skiprows = 11,
-        sep = r'\s+',
+        sep = r"\s+",
         header = None,
-        engine = "python")
+        engine = "python"
+    )
     
     data.columns = ["Cycle", "Date", "Time", "Sea Level", "Residual"]
-    data["Sea Level"] = data["Sea Level"].replace({"M": np.nan, "N": np.nan, "T": np.nan})
-    data["Residual"] = data["Residual"].replace({"M": np.nan, "N": np.nan, "T": np.nan})
-
-    data["datetime"] = pd.to_datetime(data["Date"] + " " + data["Time"], errors="coerce")
-
-    data["Sea Level"] = pd.to_numeric(data["Sea Level"], errors="coerce")
-    data["Residual"] = pd.to_numeric(data["Residual"], errors="coerce")
+    
+    data["datetime"] = pd.to_datetime(
+       data["Date"] + " " + data["Time"],
+       format="%Y/%m/%d %H:%M:%S",
+       errors="coerce"
+    )
+    
+    for col in ["Sea Level", "Residual"]:
+       data[col] = data[col].astype(str)
+       data[col] = data[col].replace(to_replace=r".*[MN]$", value=np.nan, regex=True)
+       data[col] = data[col].str.replace(r"T$", "", regex=True)
+       data[col] = pd.to_numeric(data[col], errors="coerce")
 
     data = data[["datetime", "Sea Level", "Residual"]].copy()
     data = data.dropna(subset=["datetime"])
-    data = data.set_index("datetime")
+    data = data.set_index("datetime").sort_index()
     return data
     
     
 def extract_single_year_remove_mean(year, data):
     """Returning one year of data with mean sea level removed"""
-    year_data = data[data.index.year == int(year)].copy()
+    year = int(year)
+    year_data = data[data.index.year == year].copy()
     year_data["Sea Level"] = year_data["Sea Level"] - year_data["Sea Level"].mean()
     return year_data
 
@@ -52,20 +59,19 @@ def extract_section_remove_mean(start, end, data):
 
 def join_data(data1, data2):
     """joining two yearly tidal dateframes and return them in chronological order"""
-    joined = pd.concat([data2, data1])
-    joined = joined.sort_index()
-
-    return joined
+    data = pd.concat([data2, data1])
+    data = data.sort_index()
+    return data
 
 def sea_level_rise(data):
-    """estimating rate of sea level rise per year form the full time series"""
+    """estimating rate of sea level rise using linear regression"""
     clean =data.dropna(subset =["Sea Level"]).copy()
-    x = data.index.map(pd.Timestamp.toordinal).to_numpy()
-    y = data["Sea Level"].to_numpy()
-    
-    m, c, r, p, se =stats.linregress(x, y)
-
-    return m * 365.25
+    x = mdates.date2num(clean.index.to_pydatetime())
+    y = clean["Sea Level"].to_numpy()
+    result = stats.linregress(x, y)
+    slope = result.slope * 365.25
+    p_value = result.pvalue
+    return slope, p_value
  
 def tidal_analysis(data, constituents, start_datetime):
 
