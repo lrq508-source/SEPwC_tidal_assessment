@@ -59,6 +59,8 @@ def extract_section_remove_mean(start, end, data):
 
 def join_data(data1, data2):
     """joining two yearly tidal dateframes and return them in chronological order"""
+    data1 = data1.drop(columns=["Time"], errors="ignore")
+    data2 = data2.drop(columns=["Time"], errors="ignore")
     data = pd.concat([data2, data1])
     data = data.sort_index()
     return data
