@@ -35,24 +35,34 @@ def read_tidal_data(filename):
        data[col] = data[col].str.replace(r"T$", "", regex=True)
        data[col] = pd.to_numeric(data[col], errors="coerce")
 
-    data = data[["datetime", "Sea Level", "Residual"]].copy()
+    data = data[["datetime", "Date", "Time", "Sea Level", "Residual"]].copy()
     data = data.dropna(subset=["datetime"])
     data = data.set_index("datetime").sort_index()
+    data.index = data.index.floor("h")
     return data
     
     
 def extract_single_year_remove_mean(year, data):
-    """Returning one year of data with mean sea level removed"""
+    
     year = int(year)
+    full_index = pd.date_range(
+        start=f"{year}-01-01",
+        end=f"{year}-12-31 23:00:00",
+        freq="h"
+    )
     year_data = data[data.index.year == year].copy()
+    year_data = year_data.reindex(full_index)
     year_data["Sea Level"] = year_data["Sea Level"] - year_data["Sea Level"].mean()
     return year_data
 
 
 def extract_section_remove_mean(start, end, data):
-    start = pd.to_datetime(start)
-    end = pd.to_datetime(end)
+    """Returning selected section of data with mean sea level removed"""
+    start = pd.to_datetime(start, format = "%Y%m%d")
+    end = pd.to_datetime(end, format = "%Y%m%d")
     section = data.loc[start:end].copy()
+    full_index = pd.date_range(start = start, end = end, freq = "h")
+    section = section.reindex(full_index)
     section["Sea Level"] = section["Sea Level"] - section["Sea Level"].mean()
     return section
 
