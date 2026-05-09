@@ -31,7 +31,11 @@ def read_tidal_data(filename):
     
     for col in ["Sea Level", "Residual"]:
        data[col] = data[col].astype(str)
-       data[col] = data[col].replace(to_replace=r"([0-9.]+)[MNT]$", value=r"\1", regex=True)
+       data[col] = data[col].replace(
+           to_replace=r"([0-9.]+)[MNT]$", 
+           value=r"\1", 
+           regex=True)
+       
        data[col] = pd.to_numeric(data[col], errors="coerce")
 
     data = data[["datetime", "Date", "Time", "Sea Level", "Residual"]].copy()
@@ -126,6 +130,8 @@ def main(args_list=None):
     args = parser.parse_args(args_list)
     dirname = args.directory
     verbose = args.verbose
+    
+    
 
     print("Add your code here to do things!")
     
