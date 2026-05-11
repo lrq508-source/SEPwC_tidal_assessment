@@ -18,22 +18,20 @@ def read_tidal_data(filename):
         skiprows = 11,
         sep = r"\s+",
         header = None,
-        engine = "python"
-    )
+        engine = "python")
     
     data.columns = ["Cycle", "Date", "Time", "Sea Level", "Residual"]
     
     data["datetime"] = pd.to_datetime(
        data["Date"] + " " + data["Time"],
        format="%Y/%m/%d %H:%M:%S",
-       errors="coerce"
-    )
+       errors="coerce")
     
     for col in ["Sea Level", "Residual"]:
        data[col] = data[col].astype(str)
        data[col] = data[col].replace(
-           to_replace=r"([0-9.]+)[MNT]$", 
-           value=r"\1", 
+           to_replace=r".*[MNT]$", 
+           value=np.nan, 
            regex=True)
        
        data[col] = pd.to_numeric(data[col], errors="coerce")
@@ -49,10 +47,10 @@ def extract_single_year_remove_mean(year, data):
     
     year = int(year)
     full_index = pd.date_range(
-        start=f"{year}-01-01",
+        start=f"{year}-01-01 00:00:00",
         end=f"{year}-12-31 23:00:00",
-        freq="h"
-    )
+        freq="h")
+    
     year_data = data[data.index.year == year].copy()
     year_data = year_data.reindex(full_index)
     year_data["Sea Level"] = year_data["Sea Level"] - year_data["Sea Level"].mean()
@@ -71,9 +69,7 @@ def extract_section_remove_mean(start, end, data):
 
 
 def join_data(data1, data2):
-    """joining two yearly tidal dateframes and return them in chronological order"""
-    data1 = data1.drop(columns=["Time"], errors="ignore")
-    data2 = data2.drop(columns=["Time"], errors="ignore")
+    """joining two yearly tidal dateframes and return them in order"""
     data = pd.concat([data2, data1])
     data = data.sort_index()
     return data
@@ -82,7 +78,7 @@ def sea_level_rise(data):
     """estimating rate of sea level rise using linear regression"""
     clean =data.dropna(subset =["Sea Level"]).copy()
     x = mdates.date2num(clean.index.to_pydatetime())
-    y = clean["Sea Level"].to_numpy()
+    y = clean["Sea Level"].to_numpy(dtype = float)
     result = stats.linregress(x, y)
     slope = result.slope * 365.25
     p_value = result.pvalue
