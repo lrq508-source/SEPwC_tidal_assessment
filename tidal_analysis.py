@@ -1,4 +1,5 @@
 # import the modules we need
+"""Functions for the analysis"""
 import pandas as pd
 import datetime
 import os
@@ -19,38 +20,32 @@ def read_tidal_data(filename):
         sep = r"\s+",
         header = None,
         engine = "python")
-    
     data.columns = ["Cycle", "Date", "Time", "Sea Level", "Residual"]
-    
     data["datetime"] = pd.to_datetime(
        data["Date"] + " " + data["Time"],
        format="%Y/%m/%d %H:%M:%S",
        errors="coerce")
-    
     for col in ["Sea Level", "Residual"]:
-       data[col] = data[col].astype(str)
-       data[col] = data[col].replace(
+        data[col] = data[col].astype(str)
+        data[col] = data[col].replace(
            to_replace=r".*[MNT]$", 
-           value=np.nan, 
-           regex=True)
-       
-       data[col] = pd.to_numeric(data[col], errors="coerce")
-
+           value=np.nan,
+           regex=True
+       )
+    data[col] = pd.to_numeric(data[col], errors="coerce")
     data = data[["datetime", "Date", "Time", "Sea Level", "Residual"]].copy()
     data = data.dropna(subset=["datetime"])
     data = data.set_index("datetime").sort_index()
     data.index = data.index.floor("h")
     return data
     
-    
 def extract_single_year_remove_mean(year, data):
-    
+    """Return one year of data with mean sea level removed"""
     year = int(year)
     full_index = pd.date_range(
         start=f"{year}-01-01 00:00:00",
         end=f"{year}-12-31 23:00:00",
         freq="h")
-    
     year_data = data[data.index.year == year].copy()
     year_data = year_data.reindex(full_index)
     year_data["Sea Level"] = year_data["Sea Level"] - year_data["Sea Level"].mean()
@@ -88,16 +83,13 @@ def tidal_analysis(data, constituents, start_datetime):
     """Calculating tidal constituent amplitude"""
     clean = data.dropna(subset=["Sea Level"]).copy()
     if clean.empty:
-        raise ValueError ("No valid sea level data available")
-        
+        raise ValueError ("No valid sea level data available") 
     tide = uptide.Tides(constituents)
     tide.set_initial_time(start_datetime)
-    
     start_naive = start_datetime.replace(tzinfo = None)
     times = clean.index.to_pydatetime()
-    t = np.array([(dt - start_naive).total_seconds() for dt in times], dtype = float)
+    t = np.array([(dt - start_naive).total_seconds()for dt in times], dtype = float)
     eta = clean["Sea Level"].to_numpy(dtype=float)
-    
     amp, pha = uptide.harmonic_analysis(tide, eta, t)
     return amp, pha
 
@@ -107,7 +99,6 @@ def get_longest_contiguous_data(data):
     groups = (~valid).cumsum()
     longest = valid.groupby(groups).sum().max()
     return  int(longest)
-
 
 def main(args_list=None):
 
