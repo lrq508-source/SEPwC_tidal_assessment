@@ -1,16 +1,16 @@
 # import the modules we need
-"""Functions for the analysis"""
-import pandas as pd
-import datetime
-import os
-import numpy as np
-import uptide
-import pytz
-import math
-from scipy import stats
-import matplotlib.dates as mdates
+"""Functions for analysis and reading the tidal data"""
 import argparse
+import datetime
+import glob
+import os
 
+import matplotlib.dates as mdates
+import numpy as np
+import pandas as pd
+import pytz
+from scipy import stats
+import uptide
 
 def read_tidal_data(filename):
     """Code to read a file, text date/time into real datetimes, make sea level into number"""
@@ -28,7 +28,7 @@ def read_tidal_data(filename):
     for col in ["Sea Level", "Residual"]:
         data[col] = data[col].astype(str)
         data[col] = data[col].replace(
-           to_replace=r".*[MNT]$", 
+           to_replace=r".*[MNT]$",
            value=np.nan,
            regex=True
        )
@@ -38,7 +38,7 @@ def read_tidal_data(filename):
     data = data.set_index("datetime").sort_index()
     data.index = data.index.floor("h")
     return data
-    
+
 def extract_single_year_remove_mean(year, data):
     """Return one year of data with mean sea level removed"""
     year = int(year)
@@ -78,7 +78,7 @@ def sea_level_rise(data):
     slope = result.slope * 365.25
     p_value = result.pvalue
     return slope, p_value
- 
+
 def tidal_analysis(data, constituents, start_datetime):
     """Calculating tidal constituent amplitude"""
     clean = data.dropna(subset=["Sea Level"]).copy()
@@ -101,7 +101,7 @@ def get_longest_contiguous_data(data):
     return  int(longest)
 
 def main(args_list=None):
-
+    """RUnning the full tidal analysis from a directory of yearly files."""
     parser = argparse.ArgumentParser(
                      prog="UK Tidal analysis",
                      description="Calculate tidal constiuents and RSL from tide gauge data",
@@ -113,12 +113,55 @@ def main(args_list=None):
                     action='store_true',
                     default=False,
                     help="Print progress")
-
     args = parser.parse_args(args_list)
     dirname = args.directory
     verbose = args.verbose
-    
-    
+    file_list = sorted(glob.glob(os.path.join(dirname,"*.txt")))
+    if not file_list:
+        raise FileNotFoundError(f"No txt files found in {dirname}") 
+    data = read_tidal_data(file_list[0])
+    for filename in file_list[1:]:
+        next_data = read_tidal_data(filename)
+        data = join_data(data, next_data) 
+
+    slope, p_value = sea_level_rise(data)
+    mean_sea_level = data["Sea Level"].mean()
+    analysis_data = data.copy()
+    analysis_data["Sea Level"] = analysis_data["Sea Level"] - mean_sea_level
+
+    clean = analysis_data.dropna(subset=["Sea Level"]).copy()
+    first_time = clean.index[0]
+
+    constituents = ["M2", "S2"]
+    tz = pytz.timezone("utc")
+    start_datetime = datetime.datetime(
+        first_time.year,
+        first_time.month,
+        first_time.day,
+        first_time.hour,
+        first_time.minute,
+        first_time.second,
+        tzinfo=tz
+    )
+
+    amp, pha = tidal_analysis(analysis_data, constituents, start_datetime)
+
+    output_lines = [
+        f"Files read: {len(file_list)}",
+        f"M2 amplitude: {amp[0]:.3f}",
+        f"S2 amplitude: {amp[1]:.3f}",
+        f"Sea-level rise per year: {slope:.8f}",
+        f"p-value: {p_value:.3f}",
+    ]
+
+    if verbose:
+        for line in output_lines:
+            print(line)
+    else:
+        output_file = os.path.join(dirname, "tidal_analysis_output.txt")
+        with open(output_file, "w", encoding="utf-8") as handle:
+            for line in output_lines:
+                handle.write(line + "\n")
 
     print("Add your code here to do things!")
     
