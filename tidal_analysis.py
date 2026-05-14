@@ -26,12 +26,9 @@ def read_tidal_data(filename):
        format="%Y/%m/%d %H:%M:%S",
        errors="coerce")
     for col in ["Sea Level", "Residual"]:
-        data[col] = data[col].astype(str)
-        data[col] = data[col].replace(
-           to_replace=r".*[MNT]$",
-           value=np.nan,
-           regex=True
-       )
+        data[col] = data[col].astype(str).str.replace(r"[A-Za-z]$","", regex=True)
+        data[col] = pd.to_numeric(data[col], errors="coerce")
+    
     data[col] = pd.to_numeric(data[col], errors="coerce")
     data = data[["datetime", "Date", "Time", "Sea Level", "Residual"]].copy()
     data = data.dropna(subset=["datetime"])
@@ -93,13 +90,6 @@ def tidal_analysis(data, constituents, start_datetime):
     amp, pha = uptide.harmonic_analysis(tide, eta, t)
     return amp, pha
 
-def get_longest_contiguous_data(data):
-    """Return the length of the longest contiguous non-missing section."""
-    valid = data["Sea Level"].notna()
-    groups = (~valid).cumsum()
-    longest = valid.groupby(groups).sum().max()
-    return  int(longest)
-
 def main(args_list=None):
     """RUnning the full tidal analysis from a directory of yearly files."""
     parser = argparse.ArgumentParser(
@@ -122,7 +112,7 @@ def main(args_list=None):
     data = read_tidal_data(file_list[0])
     for filename in file_list[1:]:
         next_data = read_tidal_data(filename)
-        data = join_data(data, next_data) 
+        data = join_data(data, next_data)
 
     slope, p_value = sea_level_rise(data)
     mean_sea_level = data["Sea Level"].mean()
@@ -144,7 +134,7 @@ def main(args_list=None):
         tzinfo=tz
     )
 
-    amp, pha = tidal_analysis(analysis_data, constituents, start_datetime)
+    amp, _ = tidal_analysis(analysis_data, constituents, start_datetime)
 
     output_lines = [
         f"Files read: {len(file_list)}",
@@ -162,9 +152,6 @@ def main(args_list=None):
         with open(output_file, "w", encoding="utf-8") as handle:
             for line in output_lines:
                 handle.write(line + "\n")
-
-    print("Add your code here to do things!")
-    
 
 if __name__ == '__main__':
     main()
