@@ -65,14 +65,11 @@ def join_data(data1, data2):
 
 def sea_level_rise(data):
     """estimating rate of sea level rise using linear regression"""
-    clean = data.dropna(subset=["Sea Level"]).copy()
-    monthly = clean["Sea Level"].resample("ME").mean().dropna()
-
+    monthly = data["Sea Level"].resample("ME").mean().dropna()
     x = mdates.date2num(monthly.index.to_pydatetime())
     y = monthly.to_numpy(dtype=float)
-
     result = stats.linregress(x, y)
-    slope = result.slope 
+    slope = result.slope
     p_value = result.pvalue
     return slope, p_value
 
@@ -81,10 +78,8 @@ def tidal_analysis(data, constituents, start_datetime):
     clean = data.dropna(subset=["Sea Level"]).copy()
     if clean.empty:
         raise ValueError("No valid sea level data available")
-
     tide = uptide.Tides(constituents)
     tide.set_initial_time(start_datetime)
-
     start_naive = start_datetime.replace(tzinfo=None)
     t = np.array(
         [(dt.to_pydatetime() - start_naive).total_seconds() for dt in clean.index],
@@ -132,7 +127,6 @@ def load_station_data(dirname):
     data = datasets[0]
     for next_data in datasets[1:]:
         data = join_data(data, next_data)
-
     return data, len(datasets)
 
 def main(args_list=None):
@@ -141,7 +135,6 @@ def main(args_list=None):
                      prog="UK Tidal analysis",
                      description="Calculate tidal constiuents and RSL from tide gauge data",
                      )
-
     parser.add_argument("directory",help="the directory containing txt files with data")
     parser.add_argument('-v', '--verbose',
                     action='store_true',
@@ -151,9 +144,7 @@ def main(args_list=None):
     dirname = args.directory
     verbose = args.verbose
     data, nfiles=load_station_data(dirname)
-
     slope, p_value, amp, _ = analyse_station(data)
-
     output_lines = [
         f"Files read: {nfiles}",
         f"M2 amplitude: {amp[0]:.3f}",
